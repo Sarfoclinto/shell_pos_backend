@@ -4,26 +4,27 @@ import storeRoutes from "./store.routes.js";
 import userRoutes from "./user.routes.js";
 import roleRoutes from "./role.routes.js";
 import shiftRoutes from "./shift.route.js";
-
-// TODO: update routes for products, orders, customers, inventory, reports, etc.
+import categoryRoutes from "./category.route.js";
 import productRoutes from "./product.routes.js";
+
+// TODO: update routes for orders, customers, inventory, reports, etc.
 import orderRoutes from "./order.routes.js";
 import customerRoutes from "./customer.routes.js";
 import inventoryRoutes from "./inventory.routes.js";
 import reportRoutes from "./report.routes.js";
-// import categoryRoutes  from './category.routes.js';
 
 const router = Router();
 
 // done
 router.use("/auth", authRoutes);
 router.use("/stores", storeRoutes);
-router.use("/users", userRoutes);
 router.use("/roles", roleRoutes);
+router.use("/users", userRoutes);
 router.use("/shifts", shiftRoutes);
-
-// todo done
+router.use("/categories", categoryRoutes);
 router.use("/products", productRoutes);
+
+// todo
 router.use("/orders", orderRoutes);
 router.use("/customers", customerRoutes);
 router.use("/inventory", inventoryRoutes);
