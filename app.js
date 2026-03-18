@@ -39,7 +39,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // ─────────────────────────────────────────────
 // Health Check
 // ─────────────────────────────────────────────
-app.get("/health", (req, res) => {
+app.get("/health", (_, res) => {
   res.status(200).json({
     status: "ok",
     environment: env.NODE_ENV,
