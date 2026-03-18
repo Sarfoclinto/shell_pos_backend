@@ -8,6 +8,12 @@ import categoryRoutes from "./category.routes.js";
 import productRoutes from "./product.routes.js";
 import customerRoutes from "./customer.routes.js";
 import saleRoutes from "./sale.routes.js";
+import supplierRoutes from "./supplier.routes.js";
+import purchaseOrderRoutes from "./purchaseOrder.routes.js";
+import salesReturnRoutes from "./salesReturn.routes.js";
+import inventoryAdjustmentRoutes from "./inventoryAdjustment.routes.js";
+import stockTransferRoutes from "./stockTransfer.routes.js";
+
 
 
 const router = Router();
@@ -22,5 +28,10 @@ router.use("/categories", categoryRoutes);
 router.use("/products", productRoutes);
 router.use("/customers", customerRoutes);
 router.use("/sales", saleRoutes);
+router.use("/suppliers", supplierRoutes);
+router.use("/purchase-orders", purchaseOrderRoutes);
+router.use("/sales-returns", salesReturnRoutes);
+router.use("/inventory-adjustments", inventoryAdjustmentRoutes);
+router.use("/stock-transfers", stockTransferRoutes);
 
 export default router;
