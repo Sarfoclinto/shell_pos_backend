@@ -1,5 +1,10 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import swaggerJSDoc from "swagger-jsdoc";
 import { env } from "./env.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const options = {
   definition: {
@@ -15,7 +20,7 @@ const options = {
       },
     ],
   },
-  apis: ["../routes/*.js"], // files with swagger comments
+  apis: [path.join(__dirname, "../routes/*.js")], // ✅ FIXED
 };
 
 export const swaggerSpec = swaggerJSDoc(options);
