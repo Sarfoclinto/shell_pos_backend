@@ -1,10 +1,9 @@
 import { BaseRepository } from "./base.repository.js";
-import { UserModel } from "../models/user.model.js";
 import { query } from "../config/database.js";
 
 class UserRepository extends BaseRepository {
   constructor() {
-    super(UserModel.table);
+    super("users");
   }
 
   /**
