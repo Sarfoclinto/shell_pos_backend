@@ -1,0 +1,11 @@
+files/
+draft/
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env

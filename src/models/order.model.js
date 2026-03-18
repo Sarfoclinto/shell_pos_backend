@@ -1,0 +1,30 @@
+export const OrderModel = {
+  table: "orders",
+  publicFields: [
+    "id",
+    "order_number",
+    "customer_id",
+    "cashier_id",
+    "status",
+    "subtotal",
+    "tax_amount",
+    "discount_amount",
+    "total_amount",
+    "notes",
+    "created_at",
+    "updated_at",
+  ],
+  statuses: Object.freeze({
+    PENDING: "pending",
+    COMPLETED: "completed",
+    REFUNDED: "refunded",
+    CANCELLED: "cancelled",
+  }),
+  paymentMethods: Object.freeze({
+    CASH: "cash",
+    CARD: "card",
+    MOBILE_MONEY: "mobile_money",
+    BANK_TRANSFER: "bank_transfer",
+    OTHER: "other",
+  }),
+};
