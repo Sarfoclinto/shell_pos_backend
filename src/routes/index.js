@@ -13,6 +13,7 @@ import purchaseOrderRoutes from "./purchaseOrder.routes.js";
 import salesReturnRoutes from "./salesReturn.routes.js";
 import inventoryAdjustmentRoutes from "./inventoryAdjustment.routes.js";
 import stockTransferRoutes from "./stockTransfer.routes.js";
+import reportRoutes from "./report.routes.js";
 
 
 
@@ -33,5 +34,6 @@ router.use("/purchase-orders", purchaseOrderRoutes);
 router.use("/sales-returns", salesReturnRoutes);
 router.use("/inventory-adjustments", inventoryAdjustmentRoutes);
 router.use("/stock-transfers", stockTransferRoutes);
+router.use("/reports", reportRoutes);
 
 export default router;
