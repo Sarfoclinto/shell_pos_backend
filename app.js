@@ -10,13 +10,10 @@ import { notFound } from "./src/middlewares/not-found.middleware.js";
 import { env } from "./src/config/env.js";
 import apiRoutes from "./src/routes/index.js";
 import swaggerUi from "swagger-ui-express";
-import {
-  query,
-  // connectDB
-} from "./src/config/database.js";
+import { query, connectDB } from "./src/config/database.js";
 import { swaggerSpec } from "./src/config/swagger.js";
-// import { runMigrations } from "./src/db/migrate.js";
-// import { seedUsers } from "./src/db/seeds/001_seed_users.js";
+import { runMigrations } from "./src/db/migrate.js";
+import { seedUsers } from "./src/db/seeds/001_seed_users.js";
 
 const app = express();
 
@@ -63,20 +60,20 @@ app.get("/health", async (_, res) => {
   }
 });
 
-// app.get("/setup", async (req, res) => {
-//   const secret = req.query.secret;
-//   if (secret !== "your-one-time-secret") {
-//     return res.status(403).json({ message: "Forbidden" });
-//   }
-//   try {
-//     await runMigrations();
-//     await connectDB();
-//     await seedUsers(query);
-//     return res.json({ message: "Migrations and seed complete" });
-//   } catch (err) {
-//     return res.status(500).json({ message: err.message });
-//   }
-// });
+app.get("/setup", async (req, res) => {
+  const secret = req.query.secret;
+  if (secret !== "your-one-time-secret") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  try {
+    await runMigrations();
+    await connectDB();
+    await seedUsers(query);
+    return res.json({ message: "Migrations and seed complete" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
 
 // ─────────────────────────────────────────────
 // API Routes
