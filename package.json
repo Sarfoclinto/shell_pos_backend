@@ -4,13 +4,16 @@
   "description": "Enterprise-grade POS backend API",
   "type": "module",
   "main": "server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
     "migrate": "node src/db/migrate.js",
     "migrate:rollback": "node src/db/migrate.js rollback",
     "seed": "node src/db/seed.js",
-    "db:setup": "npm run migrate && npm run seed"
+    "db:setup": "node src/db/migrate.js && node src/db/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

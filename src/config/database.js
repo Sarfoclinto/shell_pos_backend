@@ -1,6 +1,6 @@
-import pg from 'pg';
-import { env } from './env.js';
-import { logger } from '../utils/logger.js';
+import pg from "pg";
+import { env } from "./env.js";
+import { logger } from "../utils/logger.js";
 
 const { Pool } = pg;
 
@@ -14,15 +14,17 @@ const pool = new Pool({
   max: env.db.poolMax,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  // SSL is required on Railway — rejectUnauthorized: false handles
+  // self-signed certs that Railway uses internally
   ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
 });
 
-pool.on('connect', () => {
-  logger.debug('New client connected to the database pool');
+pool.on("connect", () => {
+  logger.debug("New client connected to the database pool");
 });
 
-pool.on('error', (err) => {
-  logger.error('Unexpected error on idle database client', err);
+pool.on("error", (err) => {
+  logger.error("Unexpected error on idle database client", err);
   process.exit(-1);
 });
 
@@ -44,12 +46,12 @@ export const getClient = () => pool.connect();
 export const withTransaction = async (fn) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
     const result = await fn(client);
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return result;
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw err;
   } finally {
     client.release();
@@ -61,10 +63,13 @@ export const withTransaction = async (fn) => {
  */
 export const connectDB = async () => {
   try {
-    const res = await pool.query('SELECT NOW()');
-    logger.info(`✅ PostgreSQL connected — server time: ${res.rows[0].now}`);
+    const res = await pool.query("SELECT NOW()");
+    logger.info(
+      `✅ PostgreSQL connected — ${env.db.host}:${env.db.port}/${env.db.name}`,
+    );
+    logger.info(`   Server time: ${res.rows[0].now}`);
   } catch (err) {
-    logger.error('❌ Failed to connect to PostgreSQL:', err.message);
+    logger.error("❌ Failed to connect to PostgreSQL:", err.message);
     process.exit(1);
   }
 };

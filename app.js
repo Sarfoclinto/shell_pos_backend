@@ -10,6 +10,7 @@ import { notFound } from "./src/middlewares/not-found.middleware.js";
 import { env } from "./src/config/env.js";
 import apiRoutes from "./src/routes/index.js";
 import swaggerUi from "swagger-ui-express";
+import { query } from "./src/config/database.js";
 import { swaggerSpec } from "./src/config/swagger.js";
 
 const app = express();
@@ -36,16 +37,28 @@ app.use(globalRateLimiter);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 
-// ─────────────────────────────────────────────
-// Health Check
-// ─────────────────────────────────────────────
-app.get("/health", (_, res) => {
-  res.status(200).json({
-    status: "ok",
-    environment: env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-  });
+// ── Health Check ──────────────────────────────────────────────────────────────
+// Railway pings this endpoint to confirm the service is alive.
+// Returns 200 only when the DB is reachable — this is intentional.
+// If the DB is down, Railway will restart the service.
+app.get('/health', async (_, res) => {
+  try {
+    const result = await query('SELECT NOW()');
+    return res.status(200).json({
+      status:      'ok',
+      environment: env.NODE_ENV,
+      database:    'connected',
+      timestamp:   result.rows[0].now,
+    });
+  } catch (err) {
+    return res.status(503).json({
+      status:   'error',
+      database: 'disconnected',
+      message:  err.message,
+    });
+  }
 });
+
 // ─────────────────────────────────────────────
 // API Routes
 // ─────────────────────────────────────────────
