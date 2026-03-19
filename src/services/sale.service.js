@@ -1,6 +1,6 @@
 // import { customerRepository } from "../repositories/customer.repository.js";
 import { saleRepository } from "../repositories/sale.repository.js";
-import { ApiError } from "../utils/ApiError.js";
+import { ApiError } from "../utils/api-error.js";
 import { paginate } from "../utils/pagination.js";
 import { withTransaction } from "../config/database.js";
 import { query } from "../config/database.js";

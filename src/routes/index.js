@@ -9,10 +9,10 @@ import productRoutes from "./product.routes.js";
 import customerRoutes from "./customer.routes.js";
 import saleRoutes from "./sale.routes.js";
 import supplierRoutes from "./supplier.routes.js";
-import purchaseOrderRoutes from "./purchaseOrder.routes.js";
-import salesReturnRoutes from "./salesReturn.routes.js";
-import inventoryAdjustmentRoutes from "./inventoryAdjustment.routes.js";
-import stockTransferRoutes from "./stockTransfer.routes.js";
+import purchaseOrderRoutes from "./purchase-order.routes.js";
+import salesReturnRoutes from "./sales-return.routes.js";
+import inventoryAdjustmentRoutes from "./inventory-adjustment.routes.js";
+import stockTransferRoutes from "./stock-transfer.routes.js";
 import reportRoutes from "./report.routes.js";
 
 
