@@ -33,6 +33,8 @@ router.post(
   closeShift,
 );
 
+// TODO: Route for admin to close any open shift (e.g. if cashier forgot to close at end of day)
+
 router.get("/current", authorize("shifts.manage"), getCurrentShift);
 
 // ── Admin / Manager views ─────────────────────────────────────────────────────
