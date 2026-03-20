@@ -5,7 +5,7 @@ import { seedUsers } from "../db/seeds/001_seed_users.js";
 
 const router = Router();
 
-router.get("/setup", async (req, res) => {
+router.get("/users", async (req, res) => {
   const secret = req.query.secret;
   if (secret !== "hec-sherlock") {
     return res.status(403).json({ message: "Forbidden" });
