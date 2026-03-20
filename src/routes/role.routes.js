@@ -2,7 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { authenticate, authorize } from "../middlewares/auth.middleware.js";
-import { query } from "../config/database.js";
+import { query, withTransaction } from "../config/database.js";
 
 const router = Router();
 
