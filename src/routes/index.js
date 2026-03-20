@@ -14,8 +14,7 @@ import salesReturnRoutes from "./sales-return.routes.js";
 import inventoryAdjustmentRoutes from "./inventory-adjustment.routes.js";
 import stockTransferRoutes from "./stock-transfer.routes.js";
 import reportRoutes from "./report.routes.js";
-
-
+import testRoutes from "./test.routes.js";
 
 const router = Router();
 
@@ -35,5 +34,6 @@ router.use("/sales-returns", salesReturnRoutes);
 router.use("/inventory-adjustments", inventoryAdjustmentRoutes);
 router.use("/stock-transfers", stockTransferRoutes);
 router.use("/reports", reportRoutes);
+router.use("/test", testRoutes);
 
 export default router;
