@@ -79,7 +79,9 @@ export const deleteUser = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/v1/users/:id/controls
- * Returns the extra controls granted directly to this user.
+ * Returns { roleControls, userControls } for the user.
+ * roleControls — all controls inherited from the user's role
+ * userControls — controls granted directly to this user
  */
 export const getUserControls = asyncHandler(async (req, res) => {
   const controls = await userService.getControls(req.params.id);

@@ -292,15 +292,28 @@ class UserRepository extends BaseRepository {
   // ── Per-user control overrides ──────────────────────────────────────────────
 
   async getUserControls(userId) {
-    const { rows } = await query(
+    // Role-level controls (inherited from the user's role)
+    const { rows: roleControls } = await query(
+      `SELECT c.id, c.code, c.name
+       FROM controls c
+       INNER JOIN role_control_mapping rcm ON rcm.control_id = c.id
+       INNER JOIN users u ON u.role_id = rcm.role_id
+       WHERE u.id = $1
+       ORDER BY c.code`,
+      [userId]
+    );
+ 
+    // User-level controls (granted directly to this user)
+    const { rows: userControls } = await query(
       `SELECT c.id, c.code, c.name
        FROM controls c
        INNER JOIN user_control_mapping ucm ON ucm.control_id = c.id
        WHERE ucm.user_id = $1
        ORDER BY c.code`,
-      [userId],
+      [userId]
     );
-    return rows;
+ 
+    return { roleControls, userControls };
   }
 
   async replaceUserControls(userId, controlIds, grantedBy) {

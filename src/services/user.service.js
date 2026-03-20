@@ -197,6 +197,11 @@ export const userService = {
 
   // ── Per-user control overrides ──────────────────────────────────────────────
 
+  /**
+   * Returns { roleControls, userControls } for a user.
+   * roleControls — inherited from the user's role
+   * userControls — granted directly to this user (overrides / extras)
+   */
   async getControls(userId) {
     const user = await userRepository.findByIdSafe(userId);
     if (!user) throw ApiError.notFound("User not found");

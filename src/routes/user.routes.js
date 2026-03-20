@@ -63,8 +63,19 @@ router.patch(
 );
 
 // ── Control overrides ─────────────────────────────────────────────────────────
+/**
+ * GET /api/v1/users/:id/controls
+ * Returns all controls assigned to a specific user, including those inherited from their role.
+ * Used to populate the permission matrix when editing a user.
+ */
 router.get("/:id/controls", authorize("users.view"), getUserControls);
 
+
+/**
+ * PUT /api/v1/users/:id/controls
+ * Replaces all controls assigned to a user, overriding their role permissions.
+ * Body: { controlIds: string[] }
+ */
 router.put(
   "/:id/controls",
   authorize("users.update"),
