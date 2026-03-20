@@ -40,12 +40,22 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Railway pings this endpoint to confirm the service is alive.
 // Returns 200 only when the DB is reachable — this is intentional.
 // If the DB is down, Railway will restart the service.
-app.get("/health", async (_, res) => {
+// Fast healthcheck — Railway pings this every few seconds
+// No DB query — responds instantly so healthcheck never times out
+app.get("/health", (_, res) => {
+  return res.status(200).json({
+    status: "ok",
+    environment: env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Detailed check including DB — use this manually to verify connectivity
+app.get("/health/db", async (_, res) => {
   try {
     const result = await query("SELECT NOW()");
     return res.status(200).json({
       status: "ok",
-      environment: env.NODE_ENV,
       database: "connected",
       timestamp: result.rows[0].now,
     });
@@ -57,7 +67,6 @@ app.get("/health", async (_, res) => {
     });
   }
 });
-
 
 // ─────────────────────────────────────────────
 // API Routes
