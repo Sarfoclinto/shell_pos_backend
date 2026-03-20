@@ -19,6 +19,7 @@ import seedRoutes from "./seed.routes.js";
 const router = Router();
 
 // done
+router.use("/seed", seedRoutes);
 router.use("/auth", authRoutes);
 router.use("/stores", storeRoutes);
 router.use("/roles", roleRoutes);
@@ -34,6 +35,5 @@ router.use("/sales-returns", salesReturnRoutes);
 router.use("/inventory-adjustments", inventoryAdjustmentRoutes);
 router.use("/stock-transfers", stockTransferRoutes);
 router.use("/reports", reportRoutes);
-router.use("/seed", seedRoutes);
 
 export default router;
