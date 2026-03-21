@@ -4,37 +4,63 @@ import { paginate } from "../utils/pagination.js";
 import { withTransaction } from "../config/database.js";
 import { query } from "../config/database.js";
 
+const serializeItems = (raw) => {
+  const items = typeof raw === "string" ? JSON.parse(raw) : (raw ?? []);
+  return items.map((i) => ({
+    id: i.id,
+    productId: i.productId,
+    productName: i.productName,
+    sku: i.sku,
+    quantity: i.quantity,
+  }));
+};
+
 const serializeList = (row) => ({
   id: row.id,
   transferNumber: row.transfer_number,
   status: row.status,
-  totalQuantity: row.total_quantity,
+  totalQuantity: parseInt(row.total_quantity, 10),
   notes: row.notes ?? null,
-  itemCount: parseInt(row.item_count ?? 0, 10),
-  fromStore: { name: row.from_store_name },
-  toStore: { name: row.to_store_name },
-  initiatedBy: { firstName: row.first_name, lastName: row.last_name },
+  approvedAt: row.approved_at ?? null,
   createdAt: row.created_at,
+  fromStore: {
+    id: row.from_store_id,
+    name: row.from_store_name,
+    code: row.from_store_code,
+  },
+
+  toStore: {
+    id: row.to_store_id,
+    name: row.to_store_name,
+    code: row.to_store_code,
+  },
+
+  initiatedByUser: {
+    id: row.initiated_by_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+  },
+
+  approvedByUser: row.approved_by_id
+    ? {
+        id: row.approved_by_id,
+        firstName: row.approved_first_name,
+        lastName: row.approved_last_name,
+      }
+    : null,
+
+  items: serializeItems(row.items),
 });
 
 const serializeDetail = (row) => {
-  const items =
-    typeof row.items === "string" ? JSON.parse(row.items) : (row.items ?? []);
+  const base = serializeList(row);
+
   return {
-    ...serializeList(row),
+    ...base,
+
+    // only add fields that are NOT already in serializeList
     fromStoreId: row.from_store_id,
     toStoreId: row.to_store_id,
-    approvedBy: row.approver_first_name
-      ? { firstName: row.approver_first_name, lastName: row.approver_last_name }
-      : null,
-    approvedAt: row.approved_at ?? null,
-    items: items.map((i) => ({
-      id: i.id,
-      productId: i.productId,
-      productName: i.productName,
-      sku: i.sku,
-      quantity: i.quantity,
-    })),
   };
 };
 
@@ -126,19 +152,64 @@ export const stockTransferService = {
         : (transfer.items ?? []);
 
     await withTransaction(async (client) => {
-      await stockTransferRepository.approve(id, approvedBy, notes);
+      // ✅ 1. Update transfer status
+      const { rows } = await client.query(
+        `UPDATE stock_transfers
+       SET status = 'in_transit',
+           approved_by = $2::uuid,
+           approved_at = NOW(),
+           updated_at = NOW(),
+           updated_by = $2::uuid,
+           notes = CASE 
+                     WHEN $3::text IS NOT NULL 
+                     THEN COALESCE(notes,'') || ' | ' || $3::text 
+                     ELSE notes 
+                   END
+       WHERE id = $1::uuid 
+         AND status = 'pending'
+       RETURNING *`,
+        [id, approvedBy, notes ?? null],
+      );
 
-      // Deduct from source store immediately on approval
+      if (!rows[0]) {
+        throw ApiError.badRequest("Transfer could not be approved");
+      }
+
+      // ✅ 2. Deduct stock safely
       for (const item of items) {
-        await client.query(
-          `UPDATE stock SET quantity = quantity - $1, updated_at = NOW(), updated_by = $3
-           WHERE product_id = $2 AND store_id = $4`,
+        const result = await client.query(
+          `UPDATE stock
+         SET quantity = quantity - $1,
+             updated_at = NOW(),
+             updated_by = $3::uuid
+         WHERE product_id = $2::uuid
+           AND store_id = $4::uuid
+           AND quantity >= $1
+         RETURNING quantity`,
           [item.quantity, item.productId, approvedBy, transfer.from_store_id],
         );
+
+        // 🚨 CRITICAL: Prevent negative stock
+        if (result.rowCount === 0) {
+          throw ApiError.badRequest(
+            `Insufficient stock for product ${item.productName}`,
+          );
+        }
+
+        // ✅ 3. Record movement (TRANSFER_OUT)
         await client.query(
           `INSERT INTO stock_movements
-             (product_id, store_id, movement_type, quantity_change, reference_type, reference_id, note, created_by)
-           VALUES ($1,$2,'transfer_out',$3,'transfer',$4,$5,$6)`,
+          (product_id, store_id, movement_type, quantity_change, reference_type, reference_id, note, created_by)
+         VALUES (
+           $1::uuid,
+           $2::uuid,
+           'transfer_out',
+           $3,
+           'transfer',
+           $4::uuid,
+           $5,
+           $6::uuid
+         )`,
           [
             item.productId,
             transfer.from_store_id,
@@ -156,7 +227,9 @@ export const stockTransferService = {
 
   async complete(id, completedBy) {
     const transfer = await stockTransferRepository.findByIdWithItems(id);
+
     if (!transfer) throw ApiError.notFound("Stock transfer not found");
+
     if (transfer.status !== "in_transit") {
       throw ApiError.badRequest(
         `Cannot complete a transfer with status "${transfer.status}"`,
@@ -169,21 +242,52 @@ export const stockTransferService = {
         : (transfer.items ?? []);
 
     await withTransaction(async (client) => {
-      await stockTransferRepository.complete(id, completedBy);
+      // 1. Update transfer safely (prevents double completion)
+      const { rows } = await client.query(
+        `UPDATE stock_transfers
+       SET status = 'completed',
+           updated_at = NOW(),
+           updated_by = $2::uuid
+       WHERE id = $1::uuid
+         AND status = 'in_transit'
+       RETURNING *`,
+        [id, completedBy],
+      );
 
-      // Credit destination store on completion
+      if (!rows[0]) {
+        throw ApiError.badRequest(
+          "Transfer could not be completed (maybe already processed)",
+        );
+      }
+
+      // ✅ 2. Credit destination store
       for (const item of items) {
+        // UPSERT stock safely
         await client.query(
-          `INSERT INTO stock (product_id, store_id, quantity, created_by)
-           VALUES ($1,$2,$3,$4)
-           ON CONFLICT (product_id, store_id)
-           DO UPDATE SET quantity = stock.quantity + $3, updated_at = NOW(), updated_by = $4`,
+          `INSERT INTO stock (product_id, store_id, quantity, created_at, created_by)
+         VALUES ($1::uuid, $2::uuid, $3, NOW(), $4::uuid)
+         ON CONFLICT (product_id, store_id)
+         DO UPDATE SET 
+           quantity = stock.quantity + EXCLUDED.quantity,
+           updated_at = NOW(),
+           updated_by = EXCLUDED.created_by`,
           [item.productId, transfer.to_store_id, item.quantity, completedBy],
         );
+
+        // ✅ 3. Record movement (TRANSFER_IN)
         await client.query(
           `INSERT INTO stock_movements
-             (product_id, store_id, movement_type, quantity_change, reference_type, reference_id, note, created_by)
-           VALUES ($1,$2,'transfer_in',$3,'transfer',$4,$5,$6)`,
+          (product_id, store_id, movement_type, quantity_change, reference_type, reference_id, note, created_by)
+         VALUES (
+           $1::uuid,
+           $2::uuid,
+           'transfer_in',
+           $3,
+           'transfer',
+           $4::uuid,
+           $5,
+           $6::uuid
+         )`,
           [
             item.productId,
             transfer.to_store_id,

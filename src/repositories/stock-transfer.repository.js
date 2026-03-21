@@ -48,17 +48,65 @@ class StockTransferRepository {
     const total = parseInt(cr[0].count, 10);
 
     const { rows } = await query(
-      `SELECT st.*, fs.name AS from_store_name, ts2.name AS to_store_name,
-              u.first_name, u.last_name,
-              COUNT(sti.id) AS item_count
-       FROM stock_transfers st
-       JOIN stores fs  ON fs.id  = st.from_store_id
-       JOIN stores ts2 ON ts2.id = st.to_store_id
-       JOIN users  u   ON u.id   = st.user_id
-       LEFT JOIN stock_transfer_items sti ON sti.stock_transfer_id = st.id
-       ${where} GROUP BY st.id, fs.name, ts2.name, u.first_name, u.last_name
-       ORDER BY st.created_at DESC
-       LIMIT $${i} OFFSET $${i + 1}`,
+      `SELECT 
+      st.*,
+
+      -- stores
+      fs.id   AS from_store_id,
+      fs.name AS from_store_name,
+      fs.code AS from_store_code,
+
+      ts2.id   AS to_store_id,
+      ts2.name AS to_store_name,
+      ts2.code AS to_store_code,
+
+      -- initiated by
+      u.id AS initiated_by_id,
+      u.first_name,
+      u.last_name,
+
+      -- approved by
+      au.id AS approved_by_id,
+      au.first_name AS approved_first_name,
+      au.last_name  AS approved_last_name,
+
+      -- items
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', sti.id,
+            'productId', p.id,
+            'productName', p.name,
+            'sku', p.sku,
+            'quantity', sti.quantity
+          )
+        ) FILTER (WHERE sti.id IS NOT NULL),
+        '[]'
+      ) AS items
+
+   FROM stock_transfers st
+
+   JOIN stores fs  ON fs.id  = st.from_store_id
+   JOIN stores ts2 ON ts2.id = st.to_store_id
+
+   JOIN users u ON u.id = st.user_id
+   LEFT JOIN users au ON au.id = st.approved_by
+
+   LEFT JOIN stock_transfer_items sti ON sti.stock_transfer_id = st.id
+   LEFT JOIN products p ON p.id = sti.product_id
+
+   ${where}
+
+   GROUP BY 
+     st.id,
+     fs.id, fs.name, fs.code,
+     ts2.id, ts2.name, ts2.code,
+     u.id, u.first_name, u.last_name,
+     au.id, au.first_name, au.last_name
+
+   ORDER BY st.created_at DESC
+
+   LIMIT $${i} OFFSET $${i + 1}`,
       [...vals, limit, offset],
     );
     return { rows, total };
@@ -66,26 +114,64 @@ class StockTransferRepository {
 
   async findByIdWithItems(id) {
     const { rows } = await query(
-      `SELECT st.*, fs.name AS from_store_name, ts2.name AS to_store_name,
-              u.first_name, u.last_name,
-              ab.first_name AS approver_first_name, ab.last_name AS approver_last_name,
-              COALESCE(json_agg(json_build_object(
-                'id',        sti.id,
-                'productId', sti.product_id,
-                'productName',p.name,
-                'sku',       p.sku,
-                'quantity',  sti.quantity
-              ) ORDER BY sti.id) FILTER (WHERE sti.id IS NOT NULL), '[]') AS items
-       FROM stock_transfers st
-       JOIN stores fs   ON fs.id  = st.from_store_id
-       JOIN stores ts2  ON ts2.id = st.to_store_id
-       JOIN users  u    ON u.id   = st.user_id
-       LEFT JOIN users  ab  ON ab.id = st.approved_by
-       LEFT JOIN stock_transfer_items sti ON sti.stock_transfer_id = st.id
-       LEFT JOIN products p ON p.id = sti.product_id
-       WHERE st.id = $1
-       GROUP BY st.id, fs.name, ts2.name, u.first_name, u.last_name,
-                ab.first_name, ab.last_name`,
+      `SELECT 
+      st.*,
+
+      -- from store
+      fs.id   AS from_store_id,
+      fs.name AS from_store_name,
+      fs.code AS from_store_code,
+
+      -- to store
+      ts2.id   AS to_store_id,
+      ts2.name AS to_store_name,
+      ts2.code AS to_store_code,
+
+      -- initiated by user
+      u.id AS initiated_by_id,
+      u.first_name,
+      u.last_name,
+
+      -- approved by user
+      ab.id AS approved_by_id,
+      ab.first_name AS approved_first_name,
+      ab.last_name  AS approved_last_name,
+
+      -- items
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', sti.id,
+            'productId', p.id,
+            'productName', p.name,
+            'sku', p.sku,
+            'quantity', sti.quantity
+          )
+          ORDER BY sti.id
+        ) FILTER (WHERE sti.id IS NOT NULL),
+        '[]'
+      ) AS items
+
+   FROM stock_transfers st
+
+   JOIN stores fs  ON fs.id  = st.from_store_id
+   JOIN stores ts2 ON ts2.id = st.to_store_id
+
+   JOIN users u ON u.id = st.user_id
+   LEFT JOIN users ab ON ab.id = st.approved_by
+
+   LEFT JOIN stock_transfer_items sti ON sti.stock_transfer_id = st.id
+   LEFT JOIN products p ON p.id = sti.product_id
+
+   WHERE st.id = $1
+
+   GROUP BY 
+     st.id,
+     fs.id, fs.name, fs.code,
+     ts2.id, ts2.name, ts2.code,
+     u.id, u.first_name, u.last_name,
+     ab.id, ab.first_name, ab.last_name
+  `,
       [id],
     );
     return rows[0] || null;
@@ -123,13 +209,29 @@ class StockTransferRepository {
   }
 
   async approve(id, approvedBy, notes) {
+    console.log(
+      "Repository approve called with ID:",
+      id,
+      "approvedBy:",
+      approvedBy,
+      "notes:",
+      notes,
+    );
     const { rows } = await query(
       `UPDATE stock_transfers
-       SET status = 'in_transit', approved_by = $2, approved_at = NOW(),
-           updated_at = NOW(), updated_by = $2,
-           notes = CASE WHEN $3 IS NOT NULL THEN COALESCE(notes,'') || ' | ' || $3 ELSE notes END
-       WHERE id = $1 AND status = 'pending'
-       RETURNING *`,
+   SET status = 'in_transit',
+       approved_by = $2::uuid,
+       approved_at = NOW(),
+       updated_at = NOW(),
+       updated_by = $2::uuid,
+       notes = CASE 
+                 WHEN $3::text IS NOT NULL 
+                 THEN COALESCE(notes,'') || ' | ' || $3::text 
+                 ELSE notes 
+               END
+   WHERE id = $1::uuid 
+     AND status = 'pending'
+   RETURNING *`,
       [id, approvedBy, notes ?? null],
     );
     return rows[0] || null;
@@ -138,11 +240,15 @@ class StockTransferRepository {
   async complete(id, completedBy) {
     const { rows } = await query(
       `UPDATE stock_transfers
-       SET status = 'completed', updated_at = NOW(), updated_by = $2
-       WHERE id = $1 AND status = 'in_transit'
-       RETURNING *`,
+     SET status = 'completed',
+         updated_at = NOW(),
+         updated_by = $2::uuid
+     WHERE id = $1::uuid
+       AND status = 'in_transit'
+     RETURNING *`,
       [id, completedBy],
     );
+
     return rows[0] || null;
   }
 
