@@ -4,6 +4,21 @@ import { paginate } from "../utils/pagination.js";
 import { withTransaction } from "../config/database.js";
 import { query } from "../config/database.js";
 
+const serializeItems = (raw) => {
+  const items = typeof raw === "string" ? JSON.parse(raw) : (raw ?? []);
+  return items.map((i) => ({
+    id: i.id,
+    productId: i.productId,
+    productName: i.productName,
+    sku: i.sku,
+    quantityOrdered: i.quantityOrdered,
+    quantityReceived: i.quantityReceived,
+    unitPrice: parseFloat(i.unitPrice),
+    totalPrice: parseFloat(i.totalPrice),
+    fullyReceived: i.quantityReceived >= i.quantityOrdered,
+  }));
+};
+
 const serializeList = (row) => ({
   id: row.id,
   orderNumber: row.order_number,
@@ -15,27 +30,14 @@ const serializeList = (row) => ({
   store: { name: row.store_name, code: row.store_code },
   createdBy: { firstName: row.first_name, lastName: row.last_name },
   createdAt: row.created_at,
+  items: serializeItems(row.items),
 });
 
-const serializeDetail = (row) => {
-  const items =
-    typeof row.items === "string" ? JSON.parse(row.items) : (row.items ?? []);
-  return {
-    ...serializeList(row),
-    supplierPhone: row.supplier_phone ?? null,
-    items: items.map((i) => ({
-      id: i.id,
-      productId: i.productId,
-      productName: i.productName,
-      sku: i.sku,
-      quantityOrdered: i.quantityOrdered,
-      quantityReceived: i.quantityReceived,
-      unitPrice: parseFloat(i.unitPrice),
-      totalPrice: parseFloat(i.totalPrice),
-      fullyReceived: i.quantityReceived >= i.quantityOrdered,
-    })),
-  };
-};
+const serializeDetail = (row) => ({
+  ...serializeList(row),
+  supplierPhone: row.supplier_phone ?? null,
+  // items already included via serializeList — serializeDetail adds supplier phone only
+});
 
 export const purchaseOrderService = {
   async list(queryParams) {
