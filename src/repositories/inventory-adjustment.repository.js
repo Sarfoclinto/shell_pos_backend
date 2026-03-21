@@ -21,12 +21,13 @@ class InventoryAdjustmentRepository {
     const conds = [];
     const vals = [];
     let i = 1;
+
     if (storeId) {
       conds.push(`ia.store_id = $${i++}`);
       vals.push(storeId);
     }
     if (status) {
-      conds.push(`ia.status   = $${i++}`);
+      conds.push(`ia.status = $${i++}`);
       vals.push(status);
     }
     if (from) {
@@ -39,6 +40,7 @@ class InventoryAdjustmentRepository {
     }
 
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+
     const { rows: cr } = await query(
       `SELECT COUNT(*) FROM inventory_adjustments ia ${where}`,
       vals,
@@ -46,41 +48,121 @@ class InventoryAdjustmentRepository {
     const total = parseInt(cr[0].count, 10);
 
     const { rows } = await query(
-      `SELECT ia.*, st.name AS store_name, u.first_name, u.last_name,
-              COUNT(iai.id) AS item_count
-       FROM inventory_adjustments ia
-       JOIN stores st ON st.id = ia.store_id
-       JOIN users  u  ON u.id  = ia.user_id
-       LEFT JOIN inventory_adjustment_items iai ON iai.inventory_adjustment_id = ia.id
-       ${where} GROUP BY ia.id, st.name, u.first_name, u.last_name
-       ORDER BY ia.created_at DESC
-       LIMIT $${i} OFFSET $${i + 1}`,
+      `SELECT 
+        ia.*,
+
+        -- store
+        st.id   AS store_id,
+        st.name AS store_name,
+        st.code AS store_code,
+
+        -- created by
+        u.id AS created_by_id,
+        u.first_name,
+        u.last_name,
+
+        -- approved by
+        au.id AS approved_by_id,
+        au.first_name AS approved_first_name,
+        au.last_name  AS approved_last_name,
+
+        -- items
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id',               iai.id,
+              'productId',        iai.product_id,
+              'productName',      p.name,
+              'sku',              p.sku,
+              'systemQuantity',   iai.system_quantity,
+              'adjustedQuantity', iai.adjusted_quantity,
+              'difference',       iai.difference
+            )
+            ORDER BY iai.id
+          ) FILTER (WHERE iai.id IS NOT NULL),
+          '[]'
+        ) AS items
+
+     FROM inventory_adjustments ia
+
+     JOIN stores st ON st.id = ia.store_id
+     JOIN users  u  ON u.id  = ia.user_id
+     LEFT JOIN users au ON au.id = ia.approved_by
+
+     LEFT JOIN inventory_adjustment_items iai 
+       ON iai.inventory_adjustment_id = ia.id
+     LEFT JOIN products p ON p.id = iai.product_id
+
+     ${where}
+
+     GROUP BY 
+       ia.id,
+       st.id, st.name, st.code,
+       u.id, u.first_name, u.last_name,
+       au.id, au.first_name, au.last_name
+
+     ORDER BY ia.created_at DESC
+
+     LIMIT $${i} OFFSET $${i + 1}`,
       [...vals, limit, offset],
     );
+
     return { rows, total };
   }
 
   async findByIdWithItems(id) {
     const { rows } = await query(
-      `SELECT ia.*, st.name AS store_name, u.first_name, u.last_name,
-              COALESCE(json_agg(json_build_object(
-                'id',               iai.id,
-                'productId',        iai.product_id,
-                'productName',      p.name,
-                'sku',              p.sku,
-                'systemQuantity',   iai.system_quantity,
-                'adjustedQuantity', iai.adjusted_quantity,
-                'difference',       iai.difference
-              ) ORDER BY iai.id) FILTER (WHERE iai.id IS NOT NULL), '[]') AS items
-       FROM inventory_adjustments ia
-       JOIN stores st ON st.id = ia.store_id
-       JOIN users  u  ON u.id  = ia.user_id
-       LEFT JOIN inventory_adjustment_items iai ON iai.inventory_adjustment_id = ia.id
-       LEFT JOIN products p ON p.id = iai.product_id
-       WHERE ia.id = $1
-       GROUP BY ia.id, st.name, u.first_name, u.last_name`,
+      `SELECT 
+        ia.*,
+
+        st.id   AS store_id,
+        st.name AS store_name,
+        st.code AS store_code,
+
+        u.id AS created_by_id,
+        u.first_name,
+        u.last_name,
+
+        au.id AS approved_by_id,
+        au.first_name AS approved_first_name,
+        au.last_name  AS approved_last_name,
+
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id',               iai.id,
+              'productId',        iai.product_id,
+              'productName',      p.name,
+              'sku',              p.sku,
+              'systemQuantity',   iai.system_quantity,
+              'adjustedQuantity', iai.adjusted_quantity,
+              'difference',       iai.difference
+            )
+            ORDER BY iai.id
+          ) FILTER (WHERE iai.id IS NOT NULL),
+          '[]'
+        ) AS items
+
+     FROM inventory_adjustments ia
+
+     JOIN stores st ON st.id = ia.store_id
+     JOIN users  u  ON u.id  = ia.user_id
+     LEFT JOIN users au ON au.id = ia.approved_by
+
+     LEFT JOIN inventory_adjustment_items iai 
+       ON iai.inventory_adjustment_id = ia.id
+     LEFT JOIN products p ON p.id = iai.product_id
+
+     WHERE ia.id = $1::uuid
+
+     GROUP BY 
+       ia.id,
+       st.id, st.name, st.code,
+       u.id, u.first_name, u.last_name,
+       au.id, au.first_name, au.last_name`,
       [id],
     );
+
     return rows[0] || null;
   }
 
@@ -124,10 +206,10 @@ class InventoryAdjustmentRepository {
   async approve(id, approvedBy, notes) {
     const { rows } = await query(
       `UPDATE inventory_adjustments
-       SET status = 'approved', approved_by = $2, approved_at = NOW(),
-           updated_at = NOW(), updated_by = $2,
-           notes = CASE WHEN $3 IS NOT NULL THEN COALESCE(notes,'') || ' | ' || $3 ELSE notes END
-       WHERE id = $1 AND status = 'pending'
+       SET status = 'approved', approved_by = $2::uuid, approved_at = NOW(),
+           updated_at = NOW(), updated_by = $2::uuid,
+           notes = CASE WHEN $3::text IS NOT NULL THEN COALESCE(notes,'') || ' | ' || $3::text ELSE notes END
+       WHERE id = $1::uuid AND status = 'pending'
        RETURNING *`,
       [id, approvedBy, notes ?? null],
     );

@@ -152,7 +152,7 @@ export const stockTransferService = {
         : (transfer.items ?? []);
 
     await withTransaction(async (client) => {
-      // ✅ 1. Update transfer status
+      // 1. Update transfer status
       const { rows } = await client.query(
         `UPDATE stock_transfers
        SET status = 'in_transit',
@@ -175,7 +175,7 @@ export const stockTransferService = {
         throw ApiError.badRequest("Transfer could not be approved");
       }
 
-      // ✅ 2. Deduct stock safely
+      // 2. Deduct stock safely
       for (const item of items) {
         const result = await client.query(
           `UPDATE stock
@@ -189,14 +189,14 @@ export const stockTransferService = {
           [item.quantity, item.productId, approvedBy, transfer.from_store_id],
         );
 
-        // 🚨 CRITICAL: Prevent negative stock
+        // CRITICAL: Prevent negative stock
         if (result.rowCount === 0) {
           throw ApiError.badRequest(
             `Insufficient stock for product ${item.productName}`,
           );
         }
 
-        // ✅ 3. Record movement (TRANSFER_OUT)
+        // 3. Record movement (TRANSFER_OUT)
         await client.query(
           `INSERT INTO stock_movements
           (product_id, store_id, movement_type, quantity_change, reference_type, reference_id, note, created_by)

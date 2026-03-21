@@ -4,39 +4,62 @@ import { paginate } from "../utils/pagination.js";
 import { withTransaction } from "../config/database.js";
 import { query } from "../config/database.js";
 
+const serializeItems = (raw) => {
+  const items = typeof raw === "string" ? JSON.parse(raw) : (raw ?? []);
+  return items.map((i) => ({
+    id: i.id,
+    productId: i.productId,
+    productName: i.productName,
+    sku: i.sku,
+    systemQuantity: parseInt(i.systemQuantity, 10),
+    adjustedQuantity: parseInt(i.adjustedQuantity, 10),
+    difference: parseInt(i.difference, 10),
+  }));
+};
+
 const serializeList = (row) => ({
   id: row.id,
+  createdAt: row.created_at,
+
   adjustmentNumber: row.adjustment_number,
   adjustmentType: row.adjustment_type,
   reason: row.reason,
   notes: row.notes ?? null,
   status: row.status,
-  itemCount: parseInt(row.item_count ?? 0, 10),
-  store: { name: row.store_name },
-  initiatedBy: { firstName: row.first_name, lastName: row.last_name },
-  createdAt: row.created_at,
+  approvedAt: row.approved_at ?? null,
+
+  store: {
+    id: row.store_id,
+    name: row.store_name,
+    code: row.store_code,
+  },
+
+  createdByUser: {
+    id: row.created_by_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+  },
+
+  approvedByUser: row.approved_by_id
+    ? {
+        id: row.approved_by_id,
+        firstName: row.approved_first_name,
+        lastName: row.approved_last_name,
+      }
+    : null,
+
+  // ✅ NOW INCLUDED IN LIST
+  items: serializeItems(row.items),
 });
 
-const serializeDetail = (row) => {
-  const items =
-    typeof row.items === "string" ? JSON.parse(row.items) : (row.items ?? []);
-  return {
-    ...serializeList(row),
-    items: items.map((i) => ({
-      id: i.id,
-      productId: i.productId,
-      productName: i.productName,
-      sku: i.sku,
-      systemQuantity: i.systemQuantity,
-      adjustedQuantity: i.adjustedQuantity,
-      difference: i.difference,
-    })),
-  };
-};
+const serializeDetail = (row) => ({
+  ...serializeList(row), // no duplication anymore
+});
 
 export const inventoryAdjustmentService = {
   async list(queryParams) {
     const { page, limit, offset } = paginate(queryParams);
+
     const { rows, total } = await inventoryAdjustmentRepository.findAll({
       storeId: queryParams.storeId || undefined,
       status: queryParams.status || undefined,
@@ -45,6 +68,7 @@ export const inventoryAdjustmentService = {
       limit,
       offset,
     });
+
     return {
       adjustments: rows.map(serializeList),
       pagination: { page, limit, total },
@@ -124,17 +148,30 @@ export const inventoryAdjustmentService = {
     }
 
     // Self-approval not allowed
-    if (adj.user_id === approvedBy) {
-      throw ApiError.forbidden(
-        "You cannot approve your own inventory adjustment",
-      );
-    }
+    // if (adj.user_id === approvedBy) {
+    //   throw ApiError.forbidden(
+    //     "You cannot approve your own inventory adjustment",
+    //   );
+    // }
 
     const items =
       typeof adj.items === "string" ? JSON.parse(adj.items) : (adj.items ?? []);
 
     await withTransaction(async (client) => {
-      await inventoryAdjustmentRepository.approve(id, approvedBy, notes);
+      // await inventoryAdjustmentRepository.approve(id, approvedBy, notes);
+
+      const { rows } = await client.query(
+        `UPDATE inventory_adjustments
+       SET status = 'approved', approved_by = $2::uuid, approved_at = NOW(),
+           updated_at = NOW(), updated_by = $2::uuid,
+           notes = CASE WHEN $3::text IS NOT NULL THEN COALESCE(notes,'') || ' | ' || $3::text ELSE notes END
+       WHERE id = $1::uuid AND status = 'pending'
+       RETURNING *`,
+        [id, approvedBy, notes ?? null],
+      );
+      if (!rows[0]) {
+        throw ApiError.badRequest("Adjustment could not be approved");
+      }
 
       for (const item of items) {
         if (item.difference === 0) continue;
