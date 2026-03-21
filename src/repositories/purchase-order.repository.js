@@ -43,35 +43,38 @@ class PurchaseOrderRepository {
     }
 
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+
+    // Count uses only the filter vals — no limit/offset
     const { rows: cr } = await query(
       `SELECT COUNT(*) FROM purchase_orders po ${where}`,
       vals,
     );
     const total = parseInt(cr[0].count, 10);
 
+    // Main query appends limit/offset as the next positional parameters
     const { rows } = await query(
       `SELECT po.*, sp.name AS supplier_name, st.name AS store_name, st.code AS store_code,
-              u.first_name, u.last_name,
-              COALESCE(json_agg(json_build_object(
-                'id',               poi.id,
-                'productId',        poi.product_id,
-                'productName',      p.name,
-                'sku',              p.sku,
-                'quantityOrdered',  poi.quantity_ordered,
-                'quantityReceived', poi.quantity_received,
-                'unitPrice',        poi.unit_price,
-                'totalPrice',       poi.total_price
-              ) ORDER BY poi.id) FILTER (WHERE poi.id IS NOT NULL), '[]') AS items
-       FROM purchase_orders po
-       JOIN suppliers sp ON sp.id = po.supplier_id
-       JOIN stores    st ON st.id = po.store_id
-       JOIN users     u  ON u.id  = po.user_id
-       LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
-       LEFT JOIN products p ON p.id = poi.product_id
-       ${where}
-       GROUP BY po.id, sp.name, st.name, st.code, u.first_name, u.last_name
-       ORDER BY po.order_date DESC
-       LIMIT ${i} OFFSET ${i + 1}`,
+          u.first_name, u.last_name,
+          COALESCE(json_agg(json_build_object(
+            'id',               poi.id,
+            'productId',        poi.product_id,
+            'productName',      p.name,
+            'sku',              p.sku,
+            'quantityOrdered',  poi.quantity_ordered,
+            'quantityReceived', poi.quantity_received,
+            'unitPrice',        poi.unit_price,
+            'totalPrice',       poi.total_price
+          ) ORDER BY poi.id) FILTER (WHERE poi.id IS NOT NULL), '[]') AS items
+   FROM purchase_orders po
+   JOIN suppliers sp ON sp.id = po.supplier_id
+   JOIN stores    st ON st.id = po.store_id
+   JOIN users     u  ON u.id  = po.user_id
+   LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+   LEFT JOIN products p ON p.id = poi.product_id
+   ${where}
+   GROUP BY po.id, sp.name, st.name, st.code, u.first_name, u.last_name
+   ORDER BY po.order_date DESC
+   LIMIT $${i} OFFSET $${i + 1}`,
       [...vals, limit, offset],
     );
     return { rows, total };

@@ -37,7 +37,7 @@ router.patch(
   markOrdered,
 );
 router.patch(
-  "/:id/receive-items",
+  "/:id/receive",
   authorize("purchase_orders.manage"),
   validate(receiveItemsValidator),
   receiveItems,
