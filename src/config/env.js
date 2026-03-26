@@ -48,4 +48,11 @@ export const env = {
     level: process.env.LOG_LEVEL || "debug",
     dir: process.env.LOG_DIR || "logs",
   },
+
+  paystack: {
+    secretKey: process.env.PAYSTACK_SECRET_KEY || "",
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || "",
+    webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || "",
+    baseUrl: "https://api.paystack.co",
+  },
 };

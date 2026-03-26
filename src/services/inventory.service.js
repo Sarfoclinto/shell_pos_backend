@@ -14,6 +14,8 @@ const serializeRow = (row) => ({
   categoryName: row.category_name ?? null,
   variation: row.variation ?? null,
   baseName: row.base_name ?? null,
+  baseId: row.base_id ?? null,
+  price: parseFloat(row.price),
   store: row.store_id
     ? {
         id: row.store_id,

@@ -253,8 +253,8 @@ export const saleService = {
         `INSERT INTO sales
            (receipt_number, shift_id, store_id, user_id, customer_id,
             total_amount, discount_amount, tax_amount, final_amount,
-            status, notes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'completed',$10,$11)
+            status, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'completed',$10)
          RETURNING id`,
         [
           receiptNumber,
@@ -266,7 +266,6 @@ export const saleService = {
           discountAmount,
           taxAmount,
           finalAmount,
-          data.notes ?? null,
           cashierId,
         ],
       );

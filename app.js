@@ -22,6 +22,30 @@ app.use(helmet());
 app.use(cors(corsOptions));
 app.use(compression());
 
+// ── Request Parsing ───────────────────────────────────────────────────────────
+// The Paystack webhook route needs the raw unparsed body to validate
+// the HMAC-SHA512 signature. We capture it here before express.json()
+// parses it, and attach it as req.rawBody.
+app.use((req, _, next) => {
+  if (req.path === `/api/${env.API_VERSION}/payments/webhook`) {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += chunk;
+    });
+    req.on("end", () => {
+      req.rawBody = raw;
+      try {
+        req.body = JSON.parse(raw);
+      } catch {
+        req.body = {};
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
 // ─────────────────────────────────────────────
 // Request Parsing
 // ─────────────────────────────────────────────
