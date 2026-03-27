@@ -146,12 +146,32 @@ class ShiftRepository extends BaseRepository {
 
   // ── Write ───────────────────────────────────────────────────────────────────
 
-  async openShift(userId, storeId, openingFloat, createdBy) {
+  async openShift(userId, storeId, openingFloat, createdBy, openedAt) {
+    // if openedAt, check if shift exist already for that date
+    // if yes, update status to true and return as currently open
+    if (openedAt) {
+      const { rows } = await query(
+        `SELECT * FROM shifts WHERE user_id = $1 AND store_id = $2 AND DATE(opened_at) = $3`,
+        [userId, storeId, openedAt],
+      );
+      if (rows.length > 0) {
+        // update status to true
+        const { rows } = await query(
+          `UPDATE 
+            shifts 
+            SET status = 'open', updated_at = NOW(), updated_by = $1 
+            WHERE user_id = $1 AND store_id = $2 AND DATE(opened_at) = $3 
+            RETURNING *`,
+          [userId, storeId, openedAt],
+        );
+        return rows[0];
+      }
+    }
     const { rows } = await query(
-      `INSERT INTO shifts (user_id, store_id, opening_float, status, created_by)
-       VALUES ($1, $2, $3, 'open', $4)
-       RETURNING *`,
-      [userId, storeId, openingFloat, createdBy],
+      `INSERT INTO shifts (user_id, store_id, opening_float, status, created_by, opened_at)
+    VALUES ($1, $2, $3, 'open', $4, COALESCE($5, NOW()))
+    RETURNING *`,
+      [userId, storeId, openingFloat, createdBy, openedAt],
     );
     return rows[0];
   }
@@ -160,7 +180,7 @@ class ShiftRepository extends BaseRepository {
    * Compute expected cash from completed cash sales in this shift,
    * then close the shift.
    */
-  async closeShift(id, closingCash, updatedBy) {
+  async closeShift(id, closingCash, updatedBy, notes) {
     // Calculate expected cash:
     // opening_float + all cash payments on completed sales in this shift
     const { rows: calcRows } = await query(
@@ -189,10 +209,52 @@ class ShiftRepository extends BaseRepository {
            expected_cash = $3,
            difference    = $4,
            updated_at    = NOW(),
-           updated_by    = $5
+           updated_by    = $5,
+           notes         = $6
        WHERE id = $1
        RETURNING *`,
-      [id, closingCash, expectedCash, difference, updatedBy],
+      [id, closingCash, expectedCash, difference, updatedBy, notes],
+    );
+    return rows[0];
+  }
+
+  /**
+   * admin close shift
+   */
+  async adminCloseShift(id, closingCash, updatedBy, notes) {
+    // Calculate expected cash:
+    // opening_float + all cash payments on completed sales in this shift
+    const { rows: calcRows } = await query(
+      `SELECT
+         sh.opening_float,
+         COALESCE(SUM(p.amount)
+           FILTER (WHERE p.payment_method = 'cash'
+             AND p.payment_status = 'paid'), 0) AS cash_sales
+       FROM shifts sh
+       LEFT JOIN sales    sa ON sa.shift_id = sh.id AND sa.status = 'completed'
+       LEFT JOIN payments p  ON p.sale_id   = sa.id
+       WHERE sh.id = $1
+       GROUP BY sh.id`,
+      [id],
+    );
+
+    const { opening_float, cash_sales } = calcRows[0];
+    const expectedCash = parseFloat(opening_float) + parseFloat(cash_sales);
+    const difference = parseFloat(closingCash) - expectedCash;
+
+    const { rows } = await query(
+      `UPDATE shifts
+       SET status        = 'closed',
+           closed_at     = NOW(),
+           closing_cash  = $2,
+           expected_cash = $3,
+           difference    = $4,
+           updated_at    = NOW(),
+           updated_by    = $5,
+           notes         = $6
+       WHERE id = $1
+       RETURNING *`,
+      [id, closingCash, expectedCash, difference, updatedBy, notes],
     );
     return rows[0];
   }

@@ -6,6 +6,11 @@ export const openShiftValidator = [
     .withMessage("Opening float is required")
     .isFloat({ min: 0 })
     .withMessage("Opening float must be a non-negative number"),
+
+  body("openedAt")
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601()
+    .withMessage("openedAt must be a valid ISO 8601 date"),
 ];
 
 export const closeShiftValidator = [
@@ -17,6 +22,33 @@ export const closeShiftValidator = [
 
   body("notes")
     .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Notes must not exceed 500 characters"),
+];
+
+export const adminCloseShiftValidator = [
+  body("cashierId")
+    .notEmpty()
+    .withMessage("Cashier ID is required")
+    .isUUID()
+    .withMessage("Cashier ID must be a valid UUID"),
+
+  body("storeId")
+    .notEmpty()
+    .withMessage("Store ID is required")
+    .isUUID()
+    .withMessage("Store ID must be a valid UUID"),
+
+  body("closingCash")
+    .notEmpty()
+    .withMessage("Closing cash is required")
+    .isFloat({ min: 0 })
+    .withMessage("Closing cash must be a non-negative number"),
+
+  body("notes")
+    .notEmpty()
+    .withMessage("Notes is required")
     .trim()
     .isLength({ max: 500 })
     .withMessage("Notes must not exceed 500 characters"),

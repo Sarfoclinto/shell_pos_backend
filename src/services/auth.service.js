@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { ApiError } from "../utils/api-error.js";
+import { shiftService } from "./shift.service.js";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ const signRefreshToken = (payload) =>
  * Shape the user object that goes into every auth response.
  * Never exposes password_hash or internal DB fields.
  */
-const serializeUser = (user) => ({
+const serializeUser = (user, shift = null) => ({
   id: user.id,
   firstName: user.first_name,
   lastName: user.last_name,
@@ -46,6 +47,8 @@ const serializeUser = (user) => ({
 
   isActive: user.is_active,
   lastLoginAt: user.last_login_at ?? null,
+
+  shift,
 });
 // ── Service ───────────────────────────────────────────────────────────────────
 
@@ -77,10 +80,16 @@ export const authService = {
 
     const payload = buildTokenPayload(user);
 
+    // if user role is cashier, find and attach his currently open shift else make shif property null
+    let shift = null;
+    if (user.dashboard_type === "cashier") {
+      shift = await shiftService.getCurrent(user.id, user.store_id);
+    }
+
     return {
       accessToken: signAccessToken(payload),
       refreshToken: signRefreshToken(payload),
-      user: serializeUser(user),
+      user: serializeUser(user, shift),
     };
   },
 

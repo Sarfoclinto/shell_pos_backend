@@ -5,6 +5,7 @@ import {
   getCurrentShift,
   listShifts,
   getShiftById,
+  adminCloseShift,
 } from "../controllers/shift.controller.js";
 import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
@@ -12,6 +13,7 @@ import {
   openShiftValidator,
   closeShiftValidator,
   listShiftsValidator,
+  adminCloseShiftValidator,
 } from "../validators/shift.validator.js";
 
 const router = Router();
@@ -33,7 +35,12 @@ router.post(
   closeShift,
 );
 
-// TODO: Route for admin to close any open shift (e.g. if cashier forgot to close at end of day)
+router.post(
+  "/admin-close",
+  authorize("shifts.manage"),
+  validate(adminCloseShiftValidator),
+  adminCloseShift,
+);
 
 router.get("/current", authorize("shifts.manage"), getCurrentShift);
 

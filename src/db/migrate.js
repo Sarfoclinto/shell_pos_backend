@@ -10,10 +10,15 @@ import {
   up as migration002,
   down as rollback002,
 } from "./migrations/002_full_schema.js";
+import {
+  up as migration003,
+  down as rollback003,
+} from "./migrations/003_alter_schema.js";
 
 const migrations = [
   // { name: "001_initial_schema", up: migration001, down: rollback001 },
   { name: "002_full_schema", up: migration002, down: rollback002 },
+  { name: "003_alter_schema", up: migration003, down: rollback003 },
 ];
 
 const ensureMigrationsTable = async () => {

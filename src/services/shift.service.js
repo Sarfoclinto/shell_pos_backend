@@ -54,7 +54,7 @@ export const shiftService = {
   /**
    * Open a new shift for the authenticated cashier at their assigned store.
    */
-  async open(userId, storeId, openingFloat) {
+  async open(userId, storeId, openingFloat, openedAt = null) {
     if (!storeId) {
       throw ApiError.badRequest(
         "You are not assigned to a store. Ask an admin to assign you to a store first.",
@@ -73,6 +73,7 @@ export const shiftService = {
       storeId,
       openingFloat,
       userId,
+      openedAt,
     );
     return shiftRepository.findByIdWithSummary(shift.id).then(serializeDetail);
   },
@@ -81,7 +82,7 @@ export const shiftService = {
    * Close the caller's current open shift.
    * Calculates expected cash and variance automatically.
    */
-  async close(userId, storeId, closingCash) {
+  async close(userId, storeId, closingCash, notes) {
     if (!storeId) {
       throw ApiError.badRequest("You are not assigned to a store.");
     }
@@ -91,7 +92,35 @@ export const shiftService = {
       throw ApiError.notFound("You do not have an open shift to close.");
     }
 
-    await shiftRepository.closeShift(openShift.id, closingCash, userId);
+    await shiftRepository.closeShift(openShift.id, closingCash, userId, notes);
+    const closed = await shiftRepository.findByIdWithSummary(openShift.id);
+    return serializeDetail(closed);
+  },
+
+  /**
+   * Admin close shift
+   * @param {string} adminId - The ID of the admin closing the shift
+   * @param {string} cashierId - The ID of the cashier whose shift is being closed
+   * @param {string} storeId - The ID of the store
+   * @param {number} closingCash - The amount of cash in the drawer
+   * @param {string} notes - Any notes about the shift
+   */
+  async adminClose(adminId, cashierId, storeId, closingCash, notes) {
+    if (!storeId) {
+      throw ApiError.badRequest("Store not found");
+    }
+
+    const openShift = await shiftRepository.findOpenShift(cashierId, storeId);
+    if (!openShift) {
+      throw ApiError.notFound("Cashier does not have an open shift to close.");
+    }
+
+    await shiftRepository.adminCloseShift(
+      openShift.id,
+      closingCash,
+      adminId,
+      notes,
+    );
     const closed = await shiftRepository.findByIdWithSummary(openShift.id);
     return serializeDetail(closed);
   },

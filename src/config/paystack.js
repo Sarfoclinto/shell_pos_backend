@@ -37,14 +37,11 @@ export const paystackClient = {
    * POST to a Paystack endpoint.
    */
   async post(endpoint, body) {
-    console.log("uri: ", `${BASE_URL}${endpoint}`);
-    console.log("body: ", body);
     const res = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: paystackHeaders(),
       body: JSON.stringify(body),
     });
-    console.log("res: ", await res.clone().json());
 
     return handleResponse(res, endpoint);
   },

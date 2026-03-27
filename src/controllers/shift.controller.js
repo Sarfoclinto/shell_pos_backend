@@ -12,6 +12,7 @@ export const openShift = asyncHandler(async (req, res) => {
     req.user.id,
     req.user.storeId,
     req.body.openingFloat,
+    req.body.openedAt,
   );
   return ApiResponse.created(res, shift, "Shift opened successfully");
 });
@@ -26,6 +27,23 @@ export const closeShift = asyncHandler(async (req, res) => {
     req.user.id,
     req.user.storeId,
     req.body.closingCash,
+    req.body.notes,
+  );
+  return ApiResponse.success(res, shift, "Shift closed successfully");
+});
+
+/**
+ * POST /api/v1/shifts/admin-close
+ * Admin closes a cashier's shift.
+ * Body: { cashierId, storeId, closingCash, notes? }
+ */
+export const adminCloseShift = asyncHandler(async (req, res) => {
+  const shift = await shiftService.adminClose(
+    req.user.id,
+    req.body.cashierId,
+    req.body.storeId,
+    req.body.closingCash,
+    req.body.notes,
   );
   return ApiResponse.success(res, shift, "Shift closed successfully");
 });

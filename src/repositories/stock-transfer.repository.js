@@ -209,14 +209,6 @@ class StockTransferRepository {
   }
 
   async approve(id, approvedBy, notes) {
-    console.log(
-      "Repository approve called with ID:",
-      id,
-      "approvedBy:",
-      approvedBy,
-      "notes:",
-      notes,
-    );
     const { rows } = await query(
       `UPDATE stock_transfers
    SET status = 'in_transit',

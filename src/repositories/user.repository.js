@@ -115,6 +115,30 @@ class UserRepository extends BaseRepository {
     return rows[0] || null;
   }
 
+  /**
+   * Safely find the open shift of a cashier
+   */
+  async findOpenShiftByUserId(userId) {
+    const { rows } = await query(
+      `
+    SELECT
+      s.id,
+      s.opened_at,
+      s.closed_at,
+      s.status,
+      s.opening_float,
+      s.closing_cash,
+      s.expected_cash
+    FROM shifts s
+    WHERE s.user_id = $1
+      AND s.status = 'open'
+    LIMIT 1
+    `,
+      [userId],
+    );
+    return rows[0] || null;
+  }
+
   async updateLastLogin(id) {
     await query(`UPDATE users SET last_login_at = NOW() WHERE id = $1`, [id]);
   }
@@ -300,9 +324,9 @@ class UserRepository extends BaseRepository {
        INNER JOIN users u ON u.role_id = rcm.role_id
        WHERE u.id = $1
        ORDER BY c.code`,
-      [userId]
+      [userId],
     );
- 
+
     // User-level controls (granted directly to this user)
     const { rows: userControls } = await query(
       `SELECT c.id, c.code, c.name
@@ -310,9 +334,9 @@ class UserRepository extends BaseRepository {
        INNER JOIN user_control_mapping ucm ON ucm.control_id = c.id
        WHERE ucm.user_id = $1
        ORDER BY c.code`,
-      [userId]
+      [userId],
     );
- 
+
     return { roleControls, userControls };
   }
 
