@@ -143,6 +143,23 @@ export const shiftService = {
   },
 
   /**
+   * Get the caller's currently open shift, if none send null instead of 404 error
+   */
+  async getCurrentOrNull(userId, storeId) {
+    if (!storeId) {
+      throw ApiError.badRequest("You are not assigned to a store.");
+    }
+
+    const shift = await shiftRepository.findOpenShift(userId, storeId);
+    if (!shift) {
+      return null;
+    }
+
+    const detail = await shiftRepository.findByIdWithSummary(shift.id);
+    return serializeDetail(detail);
+  },
+
+  /**
    * Get a single shift by ID (admin/manager use).
    */
   async getById(id) {

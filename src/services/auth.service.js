@@ -83,7 +83,7 @@ export const authService = {
     // if user role is cashier, find and attach his currently open shift else make shif property null
     let shift = null;
     if (user.dashboard_type === "cashier") {
-      shift = await shiftService.getCurrent(user.id, user.store_id);
+      shift = await shiftService.getCurrentOrNull(user.id, user.store_id);
     }
 
     return {
