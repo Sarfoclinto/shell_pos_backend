@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authRoutes from "./auth.routes.js";
+import dashboardRoutes from "./dashboard.route.js";
 import storeRoutes from "./store.routes.js";
 import userRoutes from "./user.routes.js";
 import roleRoutes from "./role.routes.js";
@@ -24,6 +25,7 @@ const router = Router();
 // done
 router.use("/seed", seedRoutes);
 router.use("/auth", authRoutes);
+router.use("/dashboard", dashboardRoutes);
 router.use("/stores", storeRoutes);
 router.use("/roles", roleRoutes);
 router.use("/users", userRoutes);
