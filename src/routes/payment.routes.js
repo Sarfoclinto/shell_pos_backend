@@ -15,7 +15,7 @@ const router = Router();
 // ── Webhook (no JWT auth — Paystack calls this directly) ──────────────────────
 // Must be declared before the authenticate middleware is applied.
 // Security is handled by HMAC signature validation inside the handler.
-router.post("/webhook", handleWebhook);
+router.post("/my/webhook/url", handleWebhook);
 
 // ── Authenticated routes ──────────────────────────────────────────────────────
 router.use(authenticate);
