@@ -9,3 +9,4 @@ logs/
 
 # Environment variables
 .env
+holder.js

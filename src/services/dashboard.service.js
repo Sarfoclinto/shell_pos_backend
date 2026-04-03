@@ -232,3 +232,109 @@ export const dashboardService = {
     };
   },
 };
+
+// ── Manager dashboard (appended) ──────────────────────────────────────────────
+const _defaultFrom = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
+const _defaultTo = () => new Date().toISOString();
+const _pct = (cur, prev) => {
+  if (!prev || prev === 0) return cur > 0 ? 100 : 0;
+  return parseFloat((((cur - prev) / prev) * 100).toFixed(2));
+};
+
+dashboardService.getManagerDashboard = async (storeId, from, to) => {
+  const f = from || _defaultFrom();
+  const t = to || _defaultTo();
+
+  const [
+    revenue,
+    transactions,
+    inventory,
+    shifts,
+    revenueByDay,
+    salesByPaymentMethod,
+    cashierSummary,
+    lowStockAlerts,
+    recentSalesRaw,
+  ] = await Promise.all([
+    dashboardRepository.managerRevenue(storeId),
+    dashboardRepository.managerTransactions(storeId),
+    dashboardRepository.managerInventory(storeId),
+    dashboardRepository.managerShifts(storeId),
+    dashboardRepository.managerRevenueByDay(storeId, f),
+    dashboardRepository.managerSalesByPaymentMethod(storeId, f, t),
+    dashboardRepository.managerCashierSummary(storeId, f, t),
+    dashboardRepository.managerLowStockAlerts(storeId),
+    dashboardRepository.managerRecentSales(storeId),
+  ]);
+
+  const thisMonth = parseFloat(revenue.this_month);
+  const lastMonth = parseFloat(revenue.last_month);
+
+  return {
+    revenue: {
+      total: parseFloat(revenue.total),
+      today: parseFloat(revenue.today),
+      thisWeek: parseFloat(revenue.this_week),
+      thisMonth,
+      vsLastPeriod: _pct(thisMonth, lastMonth),
+      periodLabel: "vs last month",
+    },
+    transactions: {
+      total: parseInt(transactions.total, 10),
+      today: parseInt(transactions.today, 10),
+      completed: parseInt(transactions.completed, 10),
+      pending: parseInt(transactions.pending, 10),
+      cancelled: parseInt(transactions.cancelled, 10),
+    },
+    inventory: {
+      totalSkus: parseInt(inventory.total_skus, 10),
+      lowStockCount: parseInt(inventory.low_stock_count, 10),
+      outOfStockCount: parseInt(inventory.out_of_stock_count, 10),
+    },
+    shifts: {
+      activeNow: parseInt(shifts.active_now, 10),
+      staleCount: parseInt(shifts.stale_count, 10),
+    },
+    revenueByDay: revenueByDay.map((r) => ({
+      date: r.date,
+      revenue: parseFloat(r.revenue),
+      transactions: parseInt(r.transactions, 10),
+    })),
+    salesByPaymentMethod: salesByPaymentMethod.map((r) => ({
+      method: r.method,
+      amount: parseFloat(r.amount),
+      count: parseInt(r.count, 10),
+    })),
+    cashierSummary: cashierSummary.map((r) => ({
+      userId: r.user_id,
+      fullName: `${r.first_name} ${r.last_name}`,
+      revenue: parseFloat(r.revenue),
+      transactions: parseInt(r.transactions, 10),
+      avgOrderValue: parseFloat(r.avg_order_value),
+    })),
+    lowStockAlerts: lowStockAlerts.map((r) => ({
+      productId: r.product_id,
+      productName: r.product_name,
+      sku: r.sku,
+      quantity: parseInt(r.quantity, 10),
+      storeName: r.store_name,
+      storeCode: r.store_code,
+    })),
+    recentSales: recentSalesRaw.map((row) => ({
+      id: row.id,
+      receiptNumber: row.receipt_number,
+      finalAmount: parseFloat(row.final_amount),
+      status: row.status,
+      paymentMethod: row.payment_method ?? null,
+      cashier: { fullName: `${row.cashier_first} ${row.cashier_last}` },
+      store: { name: row.store_name, code: row.store_code },
+      customer: row.customer_name ? { name: row.customer_name } : null,
+      createdAt: row.created_at,
+    })),
+  };
+};

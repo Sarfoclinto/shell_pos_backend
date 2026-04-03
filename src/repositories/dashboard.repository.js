@@ -407,3 +407,170 @@ class DashboardRepository {
 }
 
 export const dashboardRepository = new DashboardRepository();
+
+import { query as _q } from "../config/database.js";
+
+const _now = () => new Date();
+const _startDay = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
+const _startWeek = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay());
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
+const _startMonth = () =>
+  new Date(_now().getFullYear(), _now().getMonth(), 1).toISOString();
+const _startLast = () =>
+  new Date(_now().getFullYear(), _now().getMonth() - 1, 1).toISOString();
+const _endLast = () =>
+  new Date(
+    _now().getFullYear(),
+    _now().getMonth(),
+    0,
+    23,
+    59,
+    59,
+  ).toISOString();
+
+dashboardRepository.managerRevenue = async (storeId) => {
+  const f = storeId ? `AND s.store_id = '${storeId}'` : "";
+  const { rows } = await _q(
+    `
+    SELECT
+      COALESCE(SUM(final_amount),0)                                        AS total,
+      COALESCE(SUM(final_amount) FILTER (WHERE s.created_at >= $1),0)     AS today,
+      COALESCE(SUM(final_amount) FILTER (WHERE s.created_at >= $2),0)     AS this_week,
+      COALESCE(SUM(final_amount) FILTER (WHERE s.created_at >= $3),0)     AS this_month,
+      COALESCE(SUM(final_amount) FILTER (
+        WHERE s.created_at >= $4 AND s.created_at <= $5),0)               AS last_month
+    FROM sales s WHERE s.status = 'completed' ${f}`,
+    [_startDay(), _startWeek(), _startMonth(), _startLast(), _endLast()],
+  );
+  return rows[0];
+};
+
+dashboardRepository.managerTransactions = async (storeId) => {
+  const f = storeId ? `AND store_id = '${storeId}'` : "";
+  const { rows } = await _q(
+    `
+    SELECT
+      COUNT(*)                                        AS total,
+      COUNT(*) FILTER (WHERE created_at >= $1)       AS today,
+      COUNT(*) FILTER (WHERE status = 'completed')   AS completed,
+      COUNT(*) FILTER (WHERE status = 'pending')     AS pending,
+      COUNT(*) FILTER (WHERE status = 'cancelled')   AS cancelled
+    FROM sales WHERE 1=1 ${f}`,
+    [_startDay()],
+  );
+  return rows[0];
+};
+
+dashboardRepository.managerInventory = async (storeId) => {
+  const f = storeId ? `AND s.store_id = '${storeId}'` : "";
+  const { rows } = await _q(`
+    SELECT
+      COUNT(DISTINCT p.id)                                                AS total_skus,
+      COUNT(DISTINCT s.product_id) FILTER (WHERE s.quantity > 0 AND s.quantity <= 10) AS low_stock_count,
+      COUNT(DISTINCT s.product_id) FILTER (WHERE s.quantity = 0)        AS out_of_stock_count
+    FROM products p
+    LEFT JOIN stock s ON s.product_id = p.id ${f}
+    WHERE p.is_active = TRUE AND p.deleted_at IS NULL`);
+  return rows[0];
+};
+
+dashboardRepository.managerShifts = async (storeId) => {
+  const f = storeId ? `AND store_id = '${storeId}'` : "";
+  const { rows } = await _q(`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'open')                            AS active_now,
+      COUNT(*) FILTER (WHERE status = 'open' AND opened_at < NOW() - INTERVAL '12 hours') AS stale_count
+    FROM shifts WHERE 1=1 ${f}`);
+  return rows[0];
+};
+
+dashboardRepository.managerRevenueByDay = async (storeId, from) => {
+  const f = storeId ? `AND store_id = '${storeId}'` : "";
+  const { rows } = await _q(
+    `
+    SELECT DATE(created_at) AS date,
+           COALESCE(SUM(final_amount),0) AS revenue,
+           COUNT(*) AS transactions
+    FROM sales
+    WHERE status = 'completed' AND created_at >= $1 ${f}
+    GROUP BY DATE(created_at) ORDER BY date ASC`,
+    [from],
+  );
+  return rows;
+};
+
+dashboardRepository.managerSalesByPaymentMethod = async (storeId, from, to) => {
+  const f = storeId ? `AND s.store_id = '${storeId}'` : "";
+  const { rows } = await _q(
+    `
+    SELECT p.payment_method AS method,
+           COALESCE(SUM(p.amount),0) AS amount,
+           COUNT(p.id) AS count
+    FROM payments p
+    INNER JOIN sales s ON s.id = p.sale_id
+    WHERE s.status = 'completed' AND p.payment_status = 'paid'
+      AND s.created_at BETWEEN $1 AND $2 ${f}
+    GROUP BY p.payment_method ORDER BY amount DESC`,
+    [from, to],
+  );
+  return rows;
+};
+
+dashboardRepository.managerCashierSummary = async (storeId, from, to) => {
+  const f = storeId ? `AND s.store_id = '${storeId}'` : "";
+  const { rows } = await _q(
+    `
+    SELECT
+      u.id AS user_id, u.first_name, u.last_name,
+      COUNT(s.id) AS transactions,
+      COALESCE(SUM(s.final_amount),0) AS revenue,
+      COALESCE(AVG(s.final_amount),0) AS avg_order_value
+    FROM users u
+    INNER JOIN sales s ON s.user_id = u.id
+    WHERE s.status = 'completed' AND s.created_at BETWEEN $1 AND $2 ${f}
+    GROUP BY u.id, u.first_name, u.last_name
+    ORDER BY revenue DESC LIMIT 10`,
+    [from, to],
+  );
+  return rows;
+};
+
+dashboardRepository.managerLowStockAlerts = async (storeId) => {
+  const f = storeId ? `AND st.id = '${storeId}'` : "";
+  const { rows } = await _q(`
+    SELECT p.id AS product_id, p.name AS product_name, p.sku,
+           s.quantity, st.name AS store_name, st.code AS store_code
+    FROM stock s
+    INNER JOIN products p ON p.id  = s.product_id
+    INNER JOIN stores  st ON st.id = s.store_id
+    WHERE s.quantity <= 10 AND p.is_active = TRUE
+      AND p.deleted_at IS NULL AND p.type = 'inventory' ${f}
+    ORDER BY s.quantity ASC LIMIT 10`);
+  return rows;
+};
+
+dashboardRepository.managerRecentSales = async (storeId) => {
+  const f = storeId ? `AND s.store_id = '${storeId}'` : "";
+  const { rows } = await _q(`
+    SELECT s.id, s.receipt_number, s.final_amount, s.status, s.created_at,
+           p.payment_method,
+           u.first_name AS cashier_first, u.last_name AS cashier_last,
+           st.name AS store_name, st.code AS store_code,
+           c.name AS customer_name
+    FROM sales s
+    INNER JOIN users  u  ON u.id  = s.user_id
+    INNER JOIN stores st ON st.id = s.store_id
+    LEFT  JOIN customers c  ON c.id  = s.customer_id
+    LEFT  JOIN payments  p  ON p.sale_id = s.id
+    WHERE s.deleted_at IS NULL ${f}
+    ORDER BY s.created_at DESC LIMIT 8`);
+  return rows;
+};

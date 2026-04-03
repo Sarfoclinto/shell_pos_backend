@@ -10,6 +10,10 @@ import {
   stockMovementLog,
   shiftSummary,
   purchaseOrdersSummary,
+  salesReport,
+  inventoryReport,
+  cashierReport,
+  productReport,
 } from "../controllers/report.controller.js";
 import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
@@ -53,5 +57,32 @@ router.get(
   validate(purchaseOrdersSummaryValidator),
   purchaseOrdersSummary,
 );
+
+// ─── New Reports ───────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/reports/sales
+ * Query: storeId? userId? from? to? status? paymentMethod? page limit
+ */
+router.get("/sales", salesReport);
+
+/**
+ * GET /api/v1/reports/inventory
+ * Query: storeId? categoryId? lowStock? type? page limit
+ */
+router.get("/inventory", inventoryReport);
+
+/**
+ * GET /api/v1/reports/cashiers
+ * Query: storeId? userId? from? to?
+ */
+router.get("/cashiers", cashierReport);
+
+/**
+ * GET /api/v1/reports/products
+ * Query: storeId? categoryId? from? to? sort? page limit
+ * sort: revenue_desc | revenue_asc | quantity_desc | quantity_asc
+ */
+router.get("/products", productReport);
 
 export default router;

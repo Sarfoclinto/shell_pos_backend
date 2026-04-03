@@ -1,4 +1,5 @@
 import { reportService } from "../services/report.service.js";
+import { report1Service } from "../services/report1.service.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -137,4 +138,47 @@ export const purchaseOrdersSummary = asyncHandler(async (req, res) => {
     data,
     "Purchase orders summary fetched successfully",
   );
+});
+
+// ─── New Reports ───────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/reports/sales
+ * Query: storeId? userId? from? to? status? paymentMethod? page limit
+ */
+export const salesReport = asyncHandler(async (req, res) => {
+  const data = await report1Service.salesReport(req.query);
+  return ApiResponse.success(res, data, "Sales report fetched successfully");
+});
+
+/**
+ * GET /api/v1/reports/inventory
+ * Query: storeId? categoryId? lowStock? type? page limit
+ */
+export const inventoryReport = asyncHandler(async (req, res) => {
+  const data = await report1Service.inventoryReport(req.query);
+  return ApiResponse.success(
+    res,
+    data,
+    "Inventory report fetched successfully",
+  );
+});
+
+/**
+ * GET /api/v1/reports/cashiers
+ * Query: storeId? userId? from? to?
+ */
+export const cashierReport = asyncHandler(async (req, res) => {
+  const data = await report1Service.cashierReport(req.query);
+  return ApiResponse.success(res, data, "Cashier report fetched successfully");
+});
+
+/**
+ * GET /api/v1/reports/products
+ * Query: storeId? categoryId? from? to? sort? page limit
+ * sort: revenue_desc | revenue_asc | quantity_desc | quantity_asc
+ */
+export const productReport = asyncHandler(async (req, res) => {
+  const data = await report1Service.productReport(req.query);
+  return ApiResponse.success(res, data, "Product report fetched successfully");
 });

@@ -34,3 +34,14 @@ export const getCashierDashboard = asyncHandler(async (req, res) => {
   );
   return ApiResponse.success(res, data, "Dashboard data fetched successfully");
 });
+
+/**
+ * GET /api/v1/dashboard/manager
+ * Query: storeId?, from?, to?
+ */
+export const getManagerDashboard = asyncHandler(async (req, res) => {
+  const storeId = req.query.storeId || req.user.storeId || null;
+  const { from, to } = req.query;
+  const data = await dashboardService.getManagerDashboard(storeId, from, to);
+  return ApiResponse.success(res, data, "Dashboard data fetched successfully");
+});
