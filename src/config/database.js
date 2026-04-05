@@ -18,6 +18,13 @@ const pool = new Pool({
   // self-signed certs that Railway uses internally
   ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
 });
+// for railway deployment. Connect if you are deploying to railway or you want to use railway database
+// const pool = new Pool({
+//   connectionString: process.env.DATABASE_URL,
+//   ssl: {
+//     rejectUnauthorized: false,
+//   },
+// });
 
 pool.on("connect", () => {
   logger.debug("New client connected to the database pool");
