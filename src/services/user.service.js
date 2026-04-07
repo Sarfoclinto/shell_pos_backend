@@ -169,9 +169,12 @@ export const userService = {
     };
   },
 
-  async resetPassword(id, newPassword, updatedBy) {
+  async resetPassword(id, newPassword, currentPassword, updatedBy) {
     const user = await userRepository.findByIdSafe(id);
     if (!user) throw ApiError.notFound("User not found");
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) throw ApiError.unauthorized("Invalid current password");
 
     // Prevent admins from resetting their own password through this route
     // (use change-password on /auth instead)

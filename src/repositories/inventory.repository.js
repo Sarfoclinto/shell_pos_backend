@@ -65,6 +65,7 @@ class InventoryRepository {
          c.name         AS category_name,
          pv.variation,
          bp.name        AS base_name,
+         bp.image_url,
          bp.id          AS base_id,
          st.id          AS store_id,
          st.name        AS store_name,
@@ -96,7 +97,8 @@ class InventoryRepository {
          p.price, p.cost_price,
          c.name     AS category_name,
          pv.variation,
-         bp.name    AS base_name
+         bp.name    AS base_name,
+         bp.image_url
        FROM products p
        LEFT JOIN categories      c  ON c.id  = p.category_id
        LEFT JOIN product_variants pv ON pv.id = p.variant_id

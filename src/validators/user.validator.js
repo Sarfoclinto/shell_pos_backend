@@ -147,6 +147,11 @@ export const resetPasswordValidator = [
     .withMessage("Password must contain at least one uppercase letter")
     .matches(/[0-9]/)
     .withMessage("Password must contain at least one number"),
+
+  body("currentPassword")
+    .trim()
+    .notEmpty()
+    .withMessage("Current password is required"),
 ];
 
 export const assignControlsValidator = [

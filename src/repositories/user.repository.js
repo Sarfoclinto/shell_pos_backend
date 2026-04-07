@@ -73,6 +73,7 @@ class UserRepository extends BaseRepository {
       u.is_active,
       u.last_login_at,
       u.created_at,
+      u.password_hash,
 
       -- Role
       r.id              AS role_id,

@@ -10,6 +10,7 @@ import { logger } from "../utils/logger.js";
 const MOBILE_MONEY_PROVIDERS = {
   mtn: "mtn",
   vodafone: "vod",
+  telecel: "vod",
   airteltigo: "atl",
   // South Africa
   mpesa: "mpesa",
@@ -65,10 +66,14 @@ export const paystackService = {
       },
     };
 
+    console.log(payload);
+
     logger.info(
       `Initiating mobile money charge: ${reference} — GHS ${amount} to ${phone}`,
     );
     const response = await paystackClient.post("/charge", payload);
+
+    console.log(response.data);
 
     return {
       reference,
