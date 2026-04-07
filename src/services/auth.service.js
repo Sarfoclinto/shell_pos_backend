@@ -33,6 +33,7 @@ const serializeUser = (user, shift = null) => ({
   lastName: user.last_name,
   email: user.email ?? null,
   phone: user.phone,
+  img: user.img ?? null,
   storeId: user.store_id ?? null,
   storeName: user.store_name ?? null,
   storeCode: user.store_code ?? null,

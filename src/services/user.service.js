@@ -17,6 +17,7 @@ const serialize = (row) => ({
   address: row.address ?? null,
   region: row.region ?? null,
   city: row.city ?? null,
+  img: row.img ?? null,
   isActive: row.is_active,
   lastLoginAt: row.last_login_at ?? null,
   createdAt: row.created_at,

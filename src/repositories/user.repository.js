@@ -68,6 +68,7 @@ class UserRepository extends BaseRepository {
       u.address,
       u.region,
       u.city,
+      u.img,
       u.store_id,
       u.is_active,
       u.last_login_at,
@@ -191,7 +192,7 @@ class UserRepository extends BaseRepository {
 
     const { rows } = await query(
       `SELECT
-         u.id, u.first_name, u.last_name, u.email, u.phone,
+         u.id, u.first_name, u.last_name, u.email, u.phone, u.img,
          u.address, u.region, u.city,
          u.store_id, u.is_active, u.last_login_at, u.created_at,
          r.id   AS role_id,
@@ -244,9 +245,9 @@ class UserRepository extends BaseRepository {
   async create(data, createdBy) {
     const { rows } = await query(
       `INSERT INTO users
-         (first_name, last_name, phone, email, password_hash,
+         (first_name, last_name, phone, email, password_hash, img,
           role_id, store_id, address, region, city, is_active, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE,$11)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12)
        RETURNING id`,
       [
         data.firstName,
@@ -254,6 +255,7 @@ class UserRepository extends BaseRepository {
         data.phone,
         data.email ?? null,
         data.passwordHash,
+        data.img ?? null,
         data.roleId,
         data.storeId ?? null,
         data.address ?? null,
@@ -276,6 +278,7 @@ class UserRepository extends BaseRepository {
       address: "address",
       region: "region",
       city: "city",
+      img: "img",
       isActive: "is_active",
     };
 

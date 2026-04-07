@@ -37,6 +37,11 @@ export const createUserValidator = [
     .matches(/[0-9]/)
     .withMessage("Password must contain at least one number"),
 
+  body("img")
+    .optional({ nullable: true, checkFalsy: true })
+    .isURL()
+    .withMessage("Image URL must be a valid URL"),
+
   body("roleId")
     .trim()
     .notEmpty()
@@ -99,6 +104,11 @@ export const updateUserValidator = [
     .isEmail()
     .withMessage("A valid email address is required")
     .normalizeEmail(),
+
+  body("img")
+    .optional({ nullable: true, checkFalsy: true })
+    .isURL()
+    .withMessage("Image URL must be a valid URL"),
 
   body("roleId")
     .optional()

@@ -27,7 +27,7 @@ export const getUserById = asyncHandler(async (req, res) => {
 /**
  * POST /api/v1/users
  * Body: { firstName, lastName, phone, email?, password, roleId, storeId?,
- *         address?, region?, city? }
+ *         address?, region?, city?, img? }
  */
 export const createUser = asyncHandler(async (req, res) => {
   const user = await userService.create(req.body, req.user.id);
