@@ -24,6 +24,7 @@ export const env = {
     poolMin: parseInt(process.env.DB_POOL_MIN || "2", 10),
     poolMax: parseInt(process.env.DB_POOL_MAX || "10", 10),
     ssl: process.env.DB_SSL === "true",
+    databaseUrl: process.env.DATABASE_URL,
   },
 
   jwt: {

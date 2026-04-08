@@ -4,27 +4,28 @@ import { logger } from "../utils/logger.js";
 
 const { Pool } = pg;
 
-const pool = new Pool({
-  host: env.db.host,
-  port: env.db.port,
-  database: env.db.name,
-  user: env.db.user,
-  password: env.db.password,
-  min: env.db.poolMin,
-  max: env.db.poolMax,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-  // SSL is required on Railway — rejectUnauthorized: false handles
-  // self-signed certs that Railway uses internally
-  ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
-});
-// for railway deployment. Connect if you are deploying to railway or you want to use railway database
 // const pool = new Pool({
-//   connectionString: process.env.DATABASE_URL,
-//   ssl: {
-//     rejectUnauthorized: false,
-//   },
+//   host: env.db.host,
+//   port: env.db.port,
+//   database: env.db.name,
+//   user: env.db.user,
+//   password: env.db.password,
+//   min: env.db.poolMin,
+//   max: env.db.poolMax,
+//   idleTimeoutMillis: 30000,
+//   connectionTimeoutMillis: 5000,
+//   // SSL is required on Railway — rejectUnauthorized: false handles
+//   // self-signed certs that Railway uses internally
+//   ssl: env.db.ssl ? { rejectUnauthorized: false } : false,
 // });
+// for railway deployment. Connect if you are deploying to railway or you want to use railway database
+const pool = new Pool({
+  connectionString: env.db.databaseUrl,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+  },
+});
 
 pool.on("connect", () => {
   logger.debug("New client connected to the database pool");
@@ -69,6 +70,7 @@ export const withTransaction = async (fn) => {
  * Test DB connectivity on startup.
  */
 export const connectDB = async () => {
+  console.log(env.db.databaseUrl);
   try {
     const res = await pool.query("SELECT NOW()");
     logger.info(
@@ -76,6 +78,7 @@ export const connectDB = async () => {
     );
     logger.info(`   Server time: ${res.rows[0].now}`);
   } catch (err) {
+    console.error("FULL ERROR:", err);
     logger.error("❌ Failed to connect to PostgreSQL:", err.message);
     process.exit(1);
   }
