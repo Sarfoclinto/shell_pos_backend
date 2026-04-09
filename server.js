@@ -29,10 +29,19 @@ const start = async () => {
 
   // ── Start listening ─────────────────────────────────────────────────────────
   httpServer.listen(env.PORT, () => {
-    logger.info(`🚀 POS API running on port ${env.PORT} [${env.NODE_ENV}]`);
-    logger.info(`   → http://localhost:${env.PORT}/api/${env.API_VERSION}`);
-    logger.info(`   → http://localhost:${env.PORT}/health`);
-    logger.info(`   → ws://localhost:${env.PORT}  (Socket.IO)`);
+    if (isDev) {
+      logger.info(`🚀 POS API running on port ${env.PORT} [${env.NODE_ENV}]`);
+      logger.info(`   → http://localhost:${env.PORT}/api/${env.API_VERSION}`);
+      logger.info(`   → http://localhost:${env.PORT}/health`);
+      logger.info(`   → ws://localhost:${env.PORT}  (Socket.IO)`);
+    } else {
+      logger.info(`🚀 POS API running on port ${env.PORT} [${env.NODE_ENV}]`);
+      logger.info(
+        `   → https://shell-pos-backend.onrender.com/api/${env.API_VERSION}`,
+      );
+      logger.info(`   → https://shell-pos-backend.onrender.com/health`);
+      logger.info(`   → wss://shell-pos-backend.onrender.com (Socket.IO)`);
+    }
   });
 
   // ── Graceful Shutdown ───────────────────────────────────────────────────────
