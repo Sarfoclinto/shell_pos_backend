@@ -46,20 +46,6 @@ app.use((req, _, next) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// Request Parsing
-// ─────────────────────────────────────────────
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
-
-// ─────────────────────────────────────────────
-// Logging & Rate Limiting
-// ─────────────────────────────────────────────
-app.use(httpLogger);
-app.use(globalRateLimiter);
-
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 // ── Health Check ──────────────────────────────────────────────────────────────
 // Railway pings this endpoint to confirm the service is alive.
 // Returns 200 only when the DB is reachable — this is intentional.
@@ -73,6 +59,20 @@ app.get("/health", (_, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ─────────────────────────────────────────────
+// Request Parsing
+// ─────────────────────────────────────────────
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+
+// ─────────────────────────────────────────────
+// Logging & Rate Limiting
+// ─────────────────────────────────────────────
+app.use(httpLogger);
+app.use(globalRateLimiter);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Detailed check including DB — use this manually to verify connectivity
 app.get("/health/db", async (_, res) => {
