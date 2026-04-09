@@ -8,6 +8,7 @@ import { connectDB } from "./src/config/database.js";
 import { initSocketServer } from "./src/socket/index.js";
 import { logger } from "./src/utils/logger.js";
 import { env } from "./src/config/env.js";
+import { isDev } from "./src/utils/boolean.js";
 
 const start = async () => {
   // ── Database ────────────────────────────────────────────────────────────────
