@@ -165,8 +165,11 @@ export const initSocketServer = (httpServer) => {
       scannerSessions.markPaired(sessionId, socket.id);
       socket.to(`scanner:${sessionId}`).emit("scanner:paired");
 
-      socket.on("scanner:scan", ({ barcode, type }) => {
-        socket.to(`scanner:${sessionId}`).emit("scanner:scan", { barcode, type });
+      // now mode: "regular" | "add-to-cart" in payload
+      socket.on("scanner:scan", ({ barcode, type, mode }) => {
+        socket
+          .to(`scanner:${sessionId}`)
+          .emit("scanner:scan", { barcode, type, mode });
         socket.emit("scanner:ack", { received: true });
       });
 
@@ -180,9 +183,13 @@ export const initSocketServer = (httpServer) => {
     socket.on("disconnect", () => {
       if (socket.data.sessionId) {
         if (socket.data.role === "pos") {
-          socket.to(`scanner:${socket.data.sessionId}`).emit("scanner:pos-disconnected");
+          socket
+            .to(`scanner:${socket.data.sessionId}`)
+            .emit("scanner:pos-disconnected");
         } else if (socket.data.role === "scanner") {
-          socket.to(`scanner:${socket.data.sessionId}`).emit("scanner:disconnected");
+          socket
+            .to(`scanner:${socket.data.sessionId}`)
+            .emit("scanner:disconnected");
         }
       }
     });
