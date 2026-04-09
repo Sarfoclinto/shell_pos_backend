@@ -19,6 +19,7 @@ import stockTransferRoutes from "./stock-transfer.routes.js";
 import reportRoutes from "./report.routes.js";
 import seedRoutes from "./seed.routes.js";
 import paymentRoutes from "./payment.routes.js";
+import scannerRoutes from "../scanner/scanner.routes.js";
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.use("/inventory-adjustments", inventoryAdjustmentRoutes);
 router.use("/stock-transfers", stockTransferRoutes);
 router.use("/reports", reportRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/scanner", scannerRoutes);
 
 export default router;
