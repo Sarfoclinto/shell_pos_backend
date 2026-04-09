@@ -7,6 +7,7 @@ import { registerClientEventHandlers } from "./event-handler.js";
 import { initSocketBridge } from "../events/socket-bridge.js";
 import { logger } from "../utils/logger.js";
 import { scannerSessions } from "../scanner/scanner.sessions.js";
+import { productService } from "../services/product.service.js";
 
 /**
  * Initialises Socket.IO on the existing HTTP server.
@@ -166,11 +167,22 @@ export const initSocketServer = (httpServer) => {
       socket.to(`scanner:${sessionId}`).emit("scanner:paired");
 
       // now mode: "regular" | "add-to-cart" in payload
-      socket.on("scanner:scan", ({ barcode, type, mode }) => {
-        socket
-          .to(`scanner:${sessionId}`)
-          .emit("scanner:scan", { barcode, type, mode });
-        socket.emit("scanner:ack", { received: true });
+      socket.on("scanner:scan", async ({ barcode, type, mode }) => {
+        const product = await productService.getByBarcode(barcode);
+        socket.to(`scanner:${sessionId}`).emit("scanner:scan", {
+          barcode,
+          type,
+          mode,
+          product,
+          error: product ? null : "Product not found",
+        });
+        socket.emit("scanner:ack", {
+          received: true,
+          mode,
+          barcode,
+          product,
+          error: product ? null : "Product not found",
+        });
       });
 
       socket.on("scanner:disconnect-request", () => {

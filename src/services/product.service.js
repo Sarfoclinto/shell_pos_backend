@@ -138,8 +138,9 @@ export const productService = {
 
   async getByBarcode(barcode) {
     const product = await productRepository.findByBarcode(barcode);
-    if (!product)
-      throw ApiError.notFound(`No product found with barcode "${barcode}"`);
+    // if (!product)
+    //   throw ApiError.notFound(`No product found with barcode "${barcode}"`);
+    if (!product) return null;
     return serializeDetail(
       await productRepository.findByIdWithStock(product.id),
     );
