@@ -70,7 +70,6 @@ export const paystackService = {
       `Initiating mobile money charge: ${reference} — GHS ${amount} to ${phone}`,
     );
     const response = await paystackClient.post("/charge", payload);
-    logger.info(`Initiate response: ${JSON.stringify(response.data)}`);
     return {
       reference,
       status: response.data.status, // 'send_otp' | 'pay_offline' | 'success' | 'pending'
