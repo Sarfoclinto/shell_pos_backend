@@ -296,7 +296,10 @@ class DashboardRepository {
             AND p.payment_status = 'paid'), 0)                     AS card_sales,
         COALESCE(SUM(p.amount)
           FILTER (WHERE p.payment_method = 'mobile_money'
-            AND p.payment_status = 'paid'), 0)                     AS momo_sales
+            AND p.payment_status = 'paid'), 0)                     AS momo_sales,
+        COALESCE(SUM(p.amount)
+          FILTER (WHERE p.payment_method = 'split'
+            AND p.payment_status = 'paid'), 0)                     AS split_sales
       FROM shifts sh
       LEFT JOIN sales    s  ON s.shift_id = sh.id
       LEFT JOIN payments p  ON p.sale_id  = s.id
@@ -314,15 +317,16 @@ class DashboardRepository {
     const { rows } = await query(
       `
       SELECT
-        COALESCE(SUM(s.final_amount), 0)  AS revenue,
-        COUNT(s.id)                       AS transactions,
-        COALESCE(AVG(s.final_amount), 0)  AS avg_order_value,
+        COALESCE(SUM(s.final_amount) FILTER (WHERE s.status = 'completed'), 0)  AS revenue,
+        COUNT(s.id)                                                             AS transactions,
+        COUNT(s.id) FILTER (WHERE s.status = 'completed')                       AS completed_count,
+        COUNT(s.id) FILTER (WHERE s.status = 'cancelled')                       AS cancelled_count,
+        COALESCE(AVG(s.final_amount) FILTER (WHERE s.status = 'completed'), 0)  AS avg_order_value,
         MODE() WITHIN GROUP
           (ORDER BY p.payment_method)     AS top_payment_method
       FROM sales s
-      LEFT JOIN payments p ON p.sale_id = s.id AND p.payment_status = 'paid'
+      LEFT JOIN payments p ON p.sale_id = s.id AND p.payment_status = 'paid' AND s.status = 'completed'
       WHERE s.user_id    = $1
-        AND s.status     = 'completed'
         AND s.created_at >= $2`,
       [userId, startOfDay()],
     );

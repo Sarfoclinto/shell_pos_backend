@@ -195,6 +195,7 @@ export const dashboardService = {
             cashSales: parseFloat(currentShiftRaw.cash_sales),
             cardSales: parseFloat(currentShiftRaw.card_sales),
             momoSales: parseFloat(currentShiftRaw.momo_sales),
+            splitSales: parseFloat(currentShiftRaw.split_sales),
           }
         : null,
 
@@ -204,6 +205,8 @@ export const dashboardService = {
         transactions: parseInt(todayStats.transactions, 10),
         avgOrderValue: parseFloat(todayStats.avg_order_value),
         topPaymentMethod: todayStats.top_payment_method ?? null,
+        completedCount: parseInt(todayStats.completed_count, 10),
+        cancelledCount: parseInt(todayStats.cancelled_count, 10),
       },
 
       // ── Shift time series ─────────────────────────────────────────────────────
